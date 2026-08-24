@@ -8,4 +8,5 @@ in the paper.
 
 The folder "Tables" contains dataframes that are relevant especially for producing the figures. First, they contain the values of the optimal auxiliary parameters that were obtained,
 by fitting the approximations to the numerical functions and from which the approximating forms of them were derived. There are also dataframes for certain precalculated values of the
-numerical functions - using them instead of calculating the values from scratch speeds up the creation of the figures. The details of these dataframes are provided in the folder.
+numerical functions - using them instead of calculating the values from scratch speeds up the creation of the figures. The details of these dataframes are provided in the folder
+in "INSTRUCTIONS".
