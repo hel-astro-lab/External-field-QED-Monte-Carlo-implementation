@@ -1,0 +1,22 @@
+These tables contain
+1. The values of the auxiliary parameters a, b and n obtained by fitting the approximations to the numerical spectra (Na, Nb, Nn) and cumulative probabilities (Pa, Pb, Pn)
+2. Certain values of the numerical functions that are calculated beforehand
+
+
+1. The parameters
+- "SynchInt1MPade(4;0,2,3)INFPFirst030226.csv" contains the values of the auxiliary parameters when all of them are kept free with different values of chi_electron
+- "SynchInt1MPade(4;0,2,3)INFPFirstAandB030226.csv" contains the values of the approximating form of the auxiliary parameter n, and the values for the parameters
+a and b that are obtained after the approximations are refitted using the approximating form of n
+- "BWHO{4;0,1,2}PadeparamALL100526.csv" and "BWHO{4;0,1,2}PadeparametersOnlyAandB100526.csv" are equivalent dataframes but for the Breit-Wheeler approximations
+
+
+2. The precalculated values of the numerical functions
+- The "T_Synch_tab030226.csv" and "T_BW_tab090226.csv" dataframes contain the values of the auxiliary functions with different values of chi
+- The "N_Synch_tab030226.csv" and "N_BW_tab090226.csv" dataframes contain the integrals of the spectra with different values of r, such that the columns from left to right
+correspond to the chi-values in the dataframes "T_Synch_tab030226.csv" and "T_BW_tab090226.csv". These are used to obtain the values of the cumulative probabilities instead of
+doing the integration repeatedly.
+
+
+These dataframes are already used in the files that contain the code for figure creation. Only the auxiliary parameter dataframes are required to be used to create
+figures equivalent to those in the paper (unless the user wants to find the optimalvalues by themselves) and the rest are used only to speed up the figure creation.
+
