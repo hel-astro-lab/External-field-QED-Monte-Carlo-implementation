@@ -186,7 +186,7 @@ def r_solutions(z, chi):
         print('Negative under the root!: ', 2*y - K)
         print('With chivalue: ', chi)
         print('With z-value: ', z)
-    root = np.sqrt(2*y - K)
+    root = np.sqrt(2*y - K + 1e-14) # Note: addition of machine epsilon is to avoid negative values
 
     # Two of the four quartic roots are physical. The sign of the discriminant below picks
     # the one that stays real and positive; at the crossover the quartic has a double root,
