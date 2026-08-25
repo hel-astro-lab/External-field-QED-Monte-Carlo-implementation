@@ -1,13 +1,6 @@
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import random
-import math
 import scipy.integrate as integrate
 import scipy.special as special
-import mpmath
-from scipy.optimize import minimize
-import matplotlib.colors as col
 
 
 # The Auxiliary function of synchrotron radiation
@@ -47,7 +40,7 @@ def N_Synch_spectrum(x, g):
     def i1(s):
         def integrand1(p):
                 return special.kv(1/3,p)
-        return integrate.quad(integrand1, s, np.inf)[0]
+        return integrate.quad(integrand1, s, np.inf, epsabs=1e-45, epsrel=1e-10)[0]
     
     part1 = i1(xi)
     part2 = (2 + 1.5 * g * xi) * special.kv(2/3, xi)
@@ -195,37 +188,29 @@ def r_solutions(z, chi):
         print('With z-value: ', z)
     root = np.sqrt(2*y - K)
 
-    y11 = root / 2
-    y12 = -2*y - K - 2*M / (root)
-
-
-    y21 = -root / 2
-    y22 = -2*y - K + 2*M / (root)
-
-    if -2*y - K - 2*M / root >= 0:
-        u = y11 + np.sqrt(y12)/2
-        x = u - C/(4*a)
-        if x < 0:
-            sol = 1
-        else:
-            if z < 0.998 or chi >= 0.1:
-                sol = (1 - x**(1/n))**3
-            else:
-                x = (u)**(1/n) - (u)**(1/n - 1)*C/(4*a*n) - (C/(4*a*n))**2 * ((n - 1)*u**(1/n - 2))/2
-                sol = 1 - 3*x + (3*(3-1)/2)*(x)**2 - (3*(3**2 - 3*3 + 2)/6)*(x)**3
-
+    # Two of the four quartic roots are physical. The sign of the discriminant below picks
+    # the one that stays real and positive; at the crossover the quartic has a double root,
+    # so both expressions agree there and the switch adds no discontinuity.
+    if -2*y - K - 2*M/root >= 0:
+        u = (root + np.sqrt(-2*y - K - 2*M/root)) / 2
     else:
-        u = y21 + np.sqrt(y22)/2
-        x = u - C/(4*a)
-        if x < 0:
-            sol = 1
-        else:
-            if z < 0.998 or chi >= 0.1:
-                sol = (1 - x**(1/n))**3
-            else:
-                x = (u)**(1/n) - (u)**(1/n - 1)*C/(4*a*n) - (C/(4*a*n))**2 * ((n - 1)*u**(1/n - 2))/2
-                sol = 1 - 3*x + (3*(3-1)/2)*(x)**2 - (3*(3**2 - 3*3 + 2)/6)*(x)**3
+        u = (-root + np.sqrt(-2*y - K + 2*M/root)) / 2
 
+    x = u - C/(4*a)
+
+    if x < 0:
+        # Round-off has pushed the shifted root below zero; the photon then takes the whole
+        # of the electron quantum parameter.
+        sol = 1
+    elif z < 0.998 or chi >= 0.1:
+        sol = (1 - x**(1/n))**3
+    else:
+        # Classical corner: soft emission with the random number close to one. Here C/(4a)
+        # is minute beside u, so forming x = u - C/(4a) and only then raising it to 1/n
+        # cancels away most of the significant digits. Expanding (u - C/4a)^(1/n) about u
+        # to second order keeps them.
+        x = u**(1/n) - u**(1/n - 1)*C/(4*a*n) - (C/(4*a*n))**2 * ((n - 1)*u**(1/n - 2))/2
+        sol = (1 - x)**3
 
     return u, sol # u is the root of the quartic equation that is used, sol is the value of r given by this u
 

@@ -1,225 +1,35 @@
+"""Figures for the Breit-Wheeler sections of the manuscript.
+
+The physics itself lives in Implement_BW.py; this script only plots it.
+Run from the directory holding this file: it reads the tabulated values from Tables/
+and writes the figures to figures/.
+"""
+import os
 import numpy as np
 import pandas as pd
+import matplotlib as mpl
 import matplotlib.pyplot as plt
-import random
-import math
+import matplotlib.colors as col
 import scipy.integrate as integrate
 import scipy.special as special
-import mpmath
-import matplotlib as mpl
-from scipy.optimize import minimize
-import matplotlib.colors as col
-import matplotlib as mpl
 
+from Implement_BW import (
+    T_BW, N_BW_spectrum, N_BW, P_BWExct, T_BW_approx,
+    a_parameter, b_parameter, n_parameter,
+    P_BW_approx, N_BW_approx, curoot,
+    p, q, determinant, root0, root2, r_electron,
+)
 
-t_data = pd.read_csv('T_BW_tab090226.csv')
-n_data = pd.read_csv('N_BW_tab090226.csv')
+TABDIR = 'Tables/'
+FIGDIR = 'figures/'
+os.makedirs(FIGDIR, exist_ok=True)
 
+# The inversion diverges at zeta -> 1, so the random number is drawn from
+# (Z_CLIP, 1 - Z_CLIP).
+Z_CLIP = 0.0001
 
-# The auxiliary function of the Breit-Wheeler process
-# x = photon quantum parameter
-def T_BW(x):
-
-    coeff = 1 / (np.pi * np.sqrt(3) * x**2)
-
-    def xi(a):
-        return (2*x) / (3*a*(x-a))
-    
-
-    def i1(s):
-        def integrand1(p):
-            return special.kv(1/3,p)
-        return integrate.quad(integrand1, s, np.inf)[0]
-
-
-    def integrand(s):
-        part1 = i1(xi(s))
-        part2 = (2 - 1.5 * x * xi(s)) * special.kv(2/3,xi(s))
-        return part1 - part2
-    
-    try:
-        integral, error = integrate.quad(integrand, 0, x)
-    except Exception:
-        return None        
-        
-    return coeff * integral
-
-
-# The pair-production rate spectrum
-# # x = electron quantum parameter, g = photon quantum parameter
-def N_BW_spectrum(g, x):
-    coeff = 1 / (np.pi * np.sqrt(3) * g)
-
-    xi = 2 * g / (3*x*(g - x))
-    
-    def i1(s):
-        def integrand1(p):
-            return special.kv(1/3,p)
-        return integrate.quad(integrand1, s, np.inf)[0]
-    
-    part1 = i1(xi)
-    part2 = (2 - 1.5 * g * xi) * special.kv(2/3, xi)
-
-    return coeff * (part1 - part2)
-
-
-# The spectrum integrated from 0 to some electron quantum parameter e
-# if e = x, where x is the photon quantum parameter, this equals the auxiliary function
-def N_BW(x, e): 
-
-    coeff = 1 / (np.pi * np.sqrt(3) * x**2)
-
-    def xi(a):
-        return (2*x) / (3*a*(x - a))
-    
-
-    def i1(s):
-        def integrand1(p):
-            return special.kv(1/3,p)
-        return integrate.quad(integrand1, s, np.inf)[0]
-
-
-    def integrand(s):
-        part1 = i1(xi(s))
-        part2 = (2 - 1.5 * x * xi(s)) * special.kv(2/3,xi(s))
-        return part1 - part2
-    
-    try:
-        integral, error = integrate.quad(integrand, 0, e)
-    except Exception:
-        return None    
-        
-    return coeff * integral
-
-
-# The exact cumulative probability of synchrotron radiation
-# x = photon quantum parameter, r = ratio
-# Here T is the auxiliary function, use the exact value, but calculate it outside this function to avoid 
-# calculating it repeatedly when going through different r, as T only depends on chivalue and is time consuming to calculate
-def P_BWExct(x, r, T):
-    return N_BW(x, x * r)/T #/ T_BW(x)
-
-
-# 2.003260712099797 = 0.75681529/0.37779171
-# The approximation for the auxiliary function
-def T_BW_approx(x):
-    return 0.37779171*np.exp(-8/(3*x))*x**(-0.333) *(1 - np.exp(-(2.003260712099797)*x**(0.2688)))*(1 - 0.6330922*np.exp(-(3.93231893 + np.log(x))**2 / 29.94554209))
-
-
-# Functions for the a, b, and n parameters needed in the cumulative probability and pair-production spectrum approximations, and also the solution to the electron quantum parameters
-def n_parameter(x):
-    A = 14.3129740
-    B = 250.285446
-    q = 0.571261959
-    C = 0.142285910
-    D = 4.41463804
-    p = 0.63896860
-    return 0.25 + A/(1 + B*((x/100)**q + (x/100)**(2*q))) + C*np.exp(-D*(x/1000)**p)
-
-def a_parameter(x):
-    A = 0.14549869
-    B = 2.10323323
-    q = 0.2881441
-    p = 0.23634402
-    C = 1.89598777
-    D = 0.74460445
-    return (A*(x/150)**(-q) + B*(x/150)**p -1) * (1 + C*(x/150)**(-D))
-
-def b_parameter(x):
-    A = 6.74437759
-    B = 2.37682806
-    q = 1.56169871
-    p = 1.59943553
-    C = 0.13741977
-    D = 2.75389506
-    return -1.033388 - (1 + A*(x/100)**(-p))/(1 + B*(x/100)**(-q)) - C*x**(-D)
-
-
-# Approximation for the cumulative probability
-# chi = photon quantum parameter, r = chi_electron / chi_gamma
-def P_BW_approx(chi, r):
-    a = a_parameter(chi)
-    b = b_parameter(chi)
-    n = n_parameter(chi)
-    c = 2**(-2*n)*(2*a - 2**(4*n) - 2**(3*n)*b)
-    denominator = 1 + b*(1-r)**n + c*(1-r)**(2*n)
-    return 1 - (a*(1 - r)**(4*n)) / denominator
-
-
-# Approximation for the pair-production spectrum
-def N_BW_approx(chi, r, T):
-    # Here T is the auxiliary function, use the exact value, but calculate it outside this function to avoid 
-    # calculating it repeatedly when going through different r, as T only depends on chivalue and is time consuming to calculate
-    a = a_parameter(chi)
-    b = b_parameter(chi)
-    n = n_parameter(chi)
-    c = 2**(-2*n)*(2*a - 2**(4*n)-2**(3*n)*b)
-    numerator = (4 + 3*b*(1-r)**n + 2*c*(1-r)**(2*n))*(1-r)**(4*n-1)
-    denominator = 1 + b*(1-r)**n + c*(1-r)**(2*n)
-    return T*a*n*numerator/denominator**2
-
-
-# Ensures that cubic root returns a real number
-def curoot(x):
-    if x < 0:
-        return -(abs(x))**(1/3)
-    else:
-        return x**(1/3)
-
-
-# The functions needed for the solution of the electron quantum parameter ratio, that is r_electron:
-
-def p(z, chi):
-    a = a_parameter(chi)
-    b = b_parameter(chi)
-    n = n_parameter(chi)
-    c = (2*a - 2**(4*n) - 2**(3*n)*b) * 2**(-2*n)
-    p1 = 12*(1 - z)/a
-    p2 = ((1 - z) * c / a)**2
-    return (p1 - p2) / 12
-
-def q(z, chi):
-    a = a_parameter(chi)
-    b = b_parameter(chi)
-    n = n_parameter(chi)
-    c = (2*a - 2**(4*n) - b*2**(3*n)) * 2**(-2*n)
-    q1 = 2*((1 - z) * c / a)**3
-    q2 = 2*36 * (1 - z)**2 * c / a**2
-    q3 = -27*((1 - z)/a)**2 * (b**2)
-    return (q1 + q2 + q3)/216
-
-def determinant(z, chi):
-    return (q(z, chi)**2)/4 + (p(z, chi)**3)/27
-
-# Solution to the resolvent cubic equation (Cardano's method)
-def root0(z, chi):
-    a = a_parameter(chi)
-    b = b_parameter(chi)
-    n = n_parameter(chi)
-    c = (2*a - 2**(4*n) - 2**(3*n)*b) * 2**(-2*n)
-    t1 = curoot(-q(z, chi)/2 + (determinant(z, chi))**(1/2))
-    t2 = curoot(-q(z, chi)/2 - (determinant(z, chi))**(1/2))
-    y = t1 + t2 - (1 - z)*c / (6 * a)
-    return y
-
-# Solution u_2^+ of the quartic equation
-def root2(z, chi):
-    a = a_parameter(chi)
-    b = b_parameter(chi)
-    n = n_parameter(chi)
-    c = (2*a - 2**(4*n) - 2**(3*n)*b) * 2**(-2*n)
-    y = root0(z, chi)
-    x1 = -np.sqrt(2*y + c*(1-z)/a)
-    x2 = np.sqrt(-2*y + c*(1 - z)/a - 2*(b*(1 - z)/a) / np.sqrt(2*y + c*(1 - z)/a))
-    return (x1 + x2)/2
-
-
-
-# The ratio of quantum parameter: r = chi_electron/chi_gamma taken from the initial photon by a produced electron for z>=0.5
-# For z < 0.5, get the ratio by r = 1 - r_electron(1 - z, chi) (see manual symmetrization)
-# Multiply by chi_gamma to get chi_electron of the produced electron
-def r_electron(z, chi):
-    return 1 - root2(z, chi)**(1/n_parameter(chi))
+t_data = pd.read_csv(TABDIR + 'T_BW_tab090226.csv')
+n_data = pd.read_csv(TABDIR + 'N_BW_tab090226.csv')
 
 
 # THE FIGURES
@@ -312,7 +122,7 @@ if False:
     axtop     = 0.9
 
     fig.subplots_adjust(left=axleft, bottom=axbottom, right=axright, top=axtop)
-    #plt.savefig('AuxTBW180326joinedxjulkaisu.pdf')
+    #plt.savefig(FIGDIR + 'AuxTBW180326joinedxjulkaisu.pdf')
     plt.show()
 
 
@@ -414,7 +224,7 @@ if False:
         fig.subplots_adjust(left=axleft, bottom=axbottom, right=axright, top=axtop)
     
 
-#    plt.savefig('BWprobplot120226joinedxjulkaisu.pdf')
+#    plt.savefig(FIGDIR + 'BWprobplot120226joinedxjulkaisu.pdf')
     plt.show()
 
 
@@ -499,7 +309,7 @@ if False:
 
         fig.subplots_adjust(left=axleft, bottom=axbottom, right=axright, top=axtop)
     
-#    plt.savefig('BWSpectrumplots120226joinedxjulkaisu.pdf')
+#    plt.savefig(FIGDIR + 'BWSpectrumplots120226joinedxjulkaisu.pdf')
 
     plt.show()
 
@@ -667,7 +477,7 @@ if False:
     axs2[0,1] = plt.contourf(r4, chi4, np.abs(ProbDiff), cmap=plt.cm.coolwarm, norm=col.LogNorm(), levels=np.array(cbarabsticklevels), extend='both')
 
     fig.subplots_adjust(left=axleft, bottom=axbottom, right=axright, top=axtop)
-    #plt.savefig('BW2Dplots.11.2.26julkaisu.pdf')
+    #plt.savefig(FIGDIR + 'BW2Dplots.11.2.26julkaisu.pdf')
     plt.show()
 
 
@@ -751,7 +561,7 @@ if False:
                     color= 'Black',
                     alpha = 1.0,
                     lw = 1.0,
-                    label=f"$\chi_\gamma=~${chi}",
+                    label=rf"$\chi_\gamma=~${chi}",
                     linestyle=':',
                     )
         
@@ -807,7 +617,7 @@ if False:
 
     fig.subplots_adjust(left=axleft, bottom=axbottom, right=axright, top=axtop)
 
-#    fig.savefig('BWQuarticPadeElectonChi.6.4.26julkaisu.pdf')
+#    fig.savefig(FIGDIR + 'BWQuarticPadeElectonChi.6.4.26julkaisu.pdf')
 
     plt.show()
 
@@ -822,17 +632,17 @@ if False:
         lz = 16
 
         if variable == 'Pa':
-            data = pd.read_csv('BWHO{4;0,1,2}PadeparametersOnlyAandB100526.csv')
+            data = pd.read_csv(TABDIR + 'BWHO{4;0,1,2}PadeparametersOnlyAandB100526.csv')
             plotcolor = 'C0'
             def model(x):
                 return a_parameter(x)
         elif variable == 'Pb':
-            data = pd.read_csv('BWHO{4;0,1,2}PadeparametersOnlyAandB100526.csv')
+            data = pd.read_csv(TABDIR + 'BWHO{4;0,1,2}PadeparametersOnlyAandB100526.csv')
             plotcolor = 'C1'
             def model(x):
                 return b_parameter(x)
         elif variable == 'Pn':
-            data = pd.read_csv('BWHO{4;0,1,2}PadeparamALL100526.csv')
+            data = pd.read_csv(TABDIR + 'BWHO{4;0,1,2}PadeparamALL100526.csv')
             plotcolor = 'C2'
             def model(x):
                 return n_parameter(x)
@@ -911,7 +721,7 @@ if False:
         fig.subplots_adjust(left=axleft, bottom=axbottom, right=axright, top=axtop)
 
         name = 'QuarticBW' + variable + 'param110526julkaisu.pdf'
-        plt.savefig(name)
+        plt.savefig(FIGDIR + name)
         plt.show()
 
     # The relative error
@@ -975,7 +785,7 @@ if False:
         axtop     = 0.9
 
         fig.subplots_adjust(left=axleft, bottom=axbottom, right=axright, top=axtop)
-        plt.savefig(name)
+        plt.savefig(FIGDIR + name)
         plt.show()
 
     # The absolute error
@@ -1038,7 +848,7 @@ if False:
         fig.subplots_adjust(left=axleft, bottom=axbottom, right=axright, top=axtop)
 
         name = 'QuarticBW' + variable + 'paramabserror110526julkaisu.pdf'
-        plt.savefig(name)
+        plt.savefig(FIGDIR + name)
 
         plt.show()
 
@@ -1047,7 +857,7 @@ if False:
 
 if False:
 
-    data = pd.read_csv('BWHO{4;0,1,2}PadeparamALL100526.csv')
+    data = pd.read_csv(TABDIR + 'BWHO{4;0,1,2}PadeparamALL100526.csv')
 
     fig = plt.figure(1, figsize=(8.5, 2.8))
 
@@ -1162,7 +972,7 @@ if False:
 
     fig.subplots_adjust(left=axleft, bottom=axbottom, right=axright, top=axtop)
 
-    #fig.savefig('BWABNparameters110526julkaisu.pdf')
+    #fig.savefig(FIGDIR + 'BWABNparameters110526julkaisu.pdf')
     plt.show()
 
 
@@ -1200,7 +1010,7 @@ if False:
         for i in range(nrow_fig):
             axs[i,j] = plt.subplot(gs[i,j])
             axs[i,j].minorticks_on()
-            axs[i,j].set_xlabel('$\chi_e/\chi_\gamma$', fontsize=14)
+            axs[i,j].set_xlabel(r'$\chi_e/\chi_\gamma$', fontsize=14)
             #axs[i,j].set_yscale('log')
 
 
@@ -1229,8 +1039,8 @@ if False:
         chi_outs = np.zeros(N)
 
         for i in range(N):
-            zeta = np.random.uniform(low=epsilon, high=(1 - epsilon))
-            if zeta > 0.5:
+            zeta = np.random.uniform(low=Z_CLIP, high=(1 - Z_CLIP))
+            if zeta >= 1/2:
                 chi_outs[i] = r_electron(zeta, chi_in)
             else:
                 chi_outs[i] = 1 - r_electron(1 - zeta, chi_in)
@@ -1257,7 +1067,7 @@ if False:
 
         #axs[row, column].plot(r_avg, p_values/np.sum(p_values*d_avg), color='black')
         axs[row, column].plot(r_values, N_numeric, color='black')
-        axs[row, column].set_title(f'$\\chi_\gamma = {chi_in}$', fontsize=14)
+        axs[row, column].set_title(rf'$\chi_\gamma = {chi_in}$', fontsize=14)
         axs[row, column].hist(chi_outs, bins = int(np.sqrt(N)), histtype='step', color='C1', density=True)
     axleft    = 0.14
     axbottom  = 0.2
@@ -1265,7 +1075,7 @@ if False:
     axtop     = 0.9
 
     fig.subplots_adjust(left=axleft, bottom=axbottom, right=axright, top=axtop)
-    #plt.savefig('BWProducedSpectrajulkaisu.pdf')
+    #plt.savefig(FIGDIR + 'BWProducedSpectrajulkaisu.pdf')
     plt.show()
 
 

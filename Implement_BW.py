@@ -1,14 +1,6 @@
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import random
-import math
 import scipy.integrate as integrate
 import scipy.special as special
-import mpmath
-import matplotlib as mpl
-from scipy.optimize import minimize
-import matplotlib.colors as col
 
 
 # The auxiliary function of the Breit-Wheeler process
@@ -24,7 +16,7 @@ def T_BW(x):
     def i1(s):
         def integrand1(p):
             return special.kv(1/3,p)
-        return integrate.quad(integrand1, s, np.inf)[0]
+        return integrate.quad(integrand1, s, np.inf, epsabs=1e-45, epsrel=1e-10)[0]
 
 
     def integrand(s):
@@ -33,7 +25,7 @@ def T_BW(x):
         return part1 - part2
     
     try:
-        integral, error = integrate.quad(integrand, 0, x)
+        integral, error = integrate.quad(integrand, 0, x, epsabs=1e-45, epsrel=1e-10)
     except Exception:
         return None        
         
@@ -41,7 +33,7 @@ def T_BW(x):
 
 
 # The pair-production rate spectrum
-# # x = electron quantum parameter, g = photon quantum parameter
+# x = electron quantum parameter, g = photon quantum parameter
 def N_BW_spectrum(g, x):
     coeff = 1 / (np.pi * np.sqrt(3) * g)
 
@@ -50,7 +42,7 @@ def N_BW_spectrum(g, x):
     def i1(s):
         def integrand1(p):
             return special.kv(1/3,p)
-        return integrate.quad(integrand1, s, np.inf)[0]
+        return integrate.quad(integrand1, s, np.inf, epsabs=1e-45, epsrel=1e-10)[0]
     
     part1 = i1(xi)
     part2 = (2 - 1.5 * g * xi) * special.kv(2/3, xi)
@@ -71,7 +63,7 @@ def N_BW(x, e):
     def i1(s):
         def integrand1(p):
             return special.kv(1/3,p)
-        return integrate.quad(integrand1, s, np.inf)[0]
+        return integrate.quad(integrand1, s, np.inf, epsabs=1e-45, epsrel=1e-10)[0]
 
 
     def integrand(s):
@@ -80,14 +72,14 @@ def N_BW(x, e):
         return part1 - part2
     
     try:
-        integral, error = integrate.quad(integrand, 0, e)
+        integral, error = integrate.quad(integrand, 0, e, epsabs=1e-45, epsrel=1e-10)
     except Exception:
         return None    
         
     return coeff * integral
 
 
-# The exact cumulative probability of synchrotron radiation
+# The exact cumulative probability of the Breit-Wheeler process
 # x = photon quantum parameter, r = ratio
 # Here T is the auxiliary function, use the exact value, but calculate it outside this function to avoid 
 # calculating it repeatedly when going through different r, as T only depends on chivalue and is time consuming to calculate
@@ -95,7 +87,9 @@ def P_BWExct(x, r, T):
     return N_BW(x, x * r)/T #/ T_BW(x)
 
 
-# The approximation for the auxiliary function
+# The approximation for the auxiliary function.
+# The amplitude 2.003260712099797 = 0.75681529/0.37779171 sets the small-parameter
+# normalisation: as x -> 0 the approximation tends to 0.75681529*x**(-0.064)*exp(-8/(3x)).
 def T_BW_approx(x):
     return 0.37779171*np.exp(-8/(3*x))*x**(-0.333) *(1 - np.exp(-(2.003260712099797)*x**(0.2688)))*(1 - 0.6330922*np.exp(-(3.93231893 + np.log(x))**2 / 29.94554209))
 
