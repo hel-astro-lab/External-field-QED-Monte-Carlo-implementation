@@ -160,6 +160,7 @@ def r_solutions(z, chi):
     a = a_parameter(chi)
     b = b_parameter(chi)
     n = n_parameter(chi)
+    m_eps = 0
 
     c = a - b - 1
 
@@ -186,7 +187,8 @@ def r_solutions(z, chi):
         print('Negative under the root!: ', 2*y - K)
         print('With chivalue: ', chi)
         print('With z-value: ', z)
-    root = np.sqrt(2*y - K + 1e-14) # Note: addition of machine epsilon is to avoid negative values
+        m_eps = 1e-14
+    root = np.sqrt(2*y - K + m_eps) # Note: addition of machine epsilon is to avoid negative values
 
     # Two of the four quartic roots are physical. The sign of the discriminant below picks
     # the one that stays real and positive; at the crossover the quartic has a double root,
@@ -197,6 +199,11 @@ def r_solutions(z, chi):
         u = (-root + np.sqrt(-2*y - K + 2*M/root)) / 2
 
     x = u - C/(4*a)
+    if (1 - x**(1/n))**3 < 0:
+            h_chie = (0.2645654 + 1.426191*chi**(-0.6562)) / (1.166 + 1.261*chi**(-0.6562))
+            f_chie = 0.965 + 0.7328*chi**(0.8064)*np.exp(-(chi**(0.5187))/2.74)
+            g_chie = f_chie * (-0.000559811 + 16.49*chi**(-2.67)) / (0.00153794 + 3.409*chi**(-1.409))
+            return u, (z / (1 + g_chie*(1 - z)))**(1/h_chie)
 
     if x < 0:
         # Round-off has pushed the shifted root below zero; the photon then takes the whole
